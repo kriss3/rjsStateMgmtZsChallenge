@@ -1,4 +1,6 @@
-import { useState, useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
+
+import useStore from "./store";
 import "./App.css";
 
 const styles = {
@@ -15,13 +17,16 @@ const styles = {
   },
 };
 
-const items = [
-  { id: 1, task: "pay bills", done: false },
-  { id: 2, task: "buy groceries", done: false },
-  { id: 3, task: "learn Redux", done: false },
-];
+const Header = () => {
 
-const Header = ({count}) => {
+  const { all } = useStore();
+  const count = useMemo(() => {
+    if (!all.length) {
+      return false;
+    }
+    return all.length > 1 ? `${all.length} items` : `${all.length} item`;
+  }, [all]);
+
   return (
     <div className="p-4">
       <h1>Todos</h1>
@@ -30,13 +35,20 @@ const Header = ({count}) => {
   );
 };
 
-const Footer = ({archive, filter, isVisible}) => {
+const Footer = () => {
+
+  const { all, setFilter, archive } = useStore();
+
+  const isVisible = useMemo(() => {
+    return all.some((item) => item.done);
+  }, [all]);
+
   return (
     <div className="d-flex justify-content-between p-2" style={{ background: "#bdc3c7" }}>
       <form
         className="d-flex justify-content-start align-self-center"
         style={{ height: "auto" }}
-        onChange={(e) => filter(e.target.value)}
+        onChange={(e) => setFilter(e.target.value)}
       >
         <input
           className="form-check-input"
@@ -83,14 +95,9 @@ const Footer = ({archive, filter, isVisible}) => {
   );
 };
 
-function App() {
+const Form = () => {
 
   const ref = useRef();
-  const [list, setList] = useState(items);
-  const [all, setAll] = useState(items);
-  const [filter, setFilter] = useState("all");
-  const [input, setInput] = useState("");
-
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -107,15 +114,7 @@ function App() {
     setInput("");
     ref.current.value = null;
   };
-  
-  const check = (id) => {
-    const updated = all.map((item) => {
-      return item.id === id ? { ...item, done: !item.done } : item;
-    });
-    setList(updated);
-    setAll(updated);
-  };
-  
+
   const archive = () => {
     const all_filtered = all.filter((item) => !item.done);
     const filtered = list.filter((item) => !item.done);
@@ -123,9 +122,21 @@ function App() {
     setAll(all_filtered);
   };
 
-  const isVisible = useMemo(() => {
-    return all.some((item) => item.done);
-  }, [all]);
+  return(
+    <form onSubmit={onSubmit} className="mb-4 px-4">
+        <input
+          ref={ref}
+          className="form-control mb-4"
+          type="text"
+          onChange={(e) => setInput(e.target.value)}
+        />
+      </form>
+  );
+};
+
+const List = () => {
+
+  const { check, all, filter } = useStore();
 
   const allItems = useMemo(() => {
     if (filter === "completed") {
@@ -137,35 +148,31 @@ function App() {
     return all;
   }, [filter, all]);
 
-  const count = useMemo(() => {
-    if (!all.length) {
-      return false;
-    }
-    return all.length > 1 ? `${all.length} items` : `${all.length} item`;
-  }, [all]);
+  return(
+    <ul className="px-5">
+      {allItems.map((item) => (
+        <li key="id"
+          style={item.done ? styles.item_done : {}}
+          onClick={() => check(item.id)}
+        >
+          {item.task}
+        </li>
+      ))}
+    </ul>
+  );
+};
+
+function App() {
 
   return (
     <div className="mt-5" style={styles.container}>
-      <Header count={count} />
-      <form onSubmit={onSubmit} className="mb-4 px-4">
-        <input
-          ref={ref}
-          className="form-control mb-4"
-          type="text"
-          onChange={(e) => setInput(e.target.value)}
-        />
-      </form>
-      <ul className="px-5">
-        {allItems.map((item) => (
-          <li key="id"
-            style={item.done ? styles.item_done : {}}
-            onClick={() => check(item.id)}
-          >
-            {item.task}
-          </li>
-        ))}
-      </ul>
-      <Footer archive={archive} filter={setFilter} isVisible={isVisible} />
+      <Header />
+      
+      <Form />
+      
+      <List />
+
+      <Footer />
     </div>
   );
 }
